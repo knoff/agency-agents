@@ -26,18 +26,18 @@ $AllTools = @("claude-code", "copilot", "antigravity", "gemini-cli", "opencode",
 
 function Test-Installed {
     param($T)
-    $Home = $env:USERPROFILE
+    $UserHome = $env:USERPROFILE
     switch ($T) {
-        "claude-code" { return Test-Path (Join-Path $Home ".claude\agents") }
-        "copilot"     { return (Test-Path (Join-Path $Home ".github\agents")) -or (Test-Path (Join-Path $Home ".copilot\agents")) }
-        "antigravity" { return Test-Path (Join-Path $Home ".gemini\antigravity\skills") }
-        "gemini-cli"  { return Test-Path (Join-Path $Home ".gemini\extensions\agency-agents") }
+        "claude-code" { return Test-Path (Join-Path $UserHome ".claude\agents") }
+        "copilot"     { return (Test-Path (Join-Path $UserHome ".github\agents")) -or (Test-Path (Join-Path $UserHome ".copilot\agents")) }
+        "antigravity" { return Test-Path (Join-Path $UserHome ".gemini\antigravity\skills") }
+        "gemini-cli"  { return Test-Path (Join-Path $UserHome ".gemini\extensions\agency-agents") }
         "cursor"      { return Test-Path (Join-Path $PWD ".cursor\rules") }
         "opencode"    { return Test-Path (Join-Path $PWD ".opencode\agents") }
-        "aider"        { return Test-Path (Join-Path $PWD "CONVENTIONS.md") }
+        "aider"       { return Test-Path (Join-Path $PWD "CONVENTIONS.md") }
         "openclaw"    { return Test-Path (Join-Path $Home ".openclaw\agency-agents") }
         "windsurf"    { return Test-Path (Join-Path $PWD ".windsurfrules") }
-        "qwen"         { return Test-Path (Join-Path $PWD ".qwen\agents") }
+        "qwen"        { return Test-Path (Join-Path $PWD ".qwen\agents") }
     }
     return $false
 }
