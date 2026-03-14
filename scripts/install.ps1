@@ -47,9 +47,9 @@ if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
 if ($ConfigPath -and (Test-Path $ConfigPath)) {
     Write-Host "Using config: $ConfigPath"
     if ($ConfigPath.EndsWith(".json")) {
-        $Whitelist = Get-Content $ConfigPath -Raw | ConvertFrom-Json
+        $Whitelist = Get-Content $ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
     } else {
-        $Whitelist = Get-Content $ConfigPath | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | ForEach-Object { $_.Trim() }
+        $Whitelist = Get-Content $ConfigPath -Encoding UTF8 | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | ForEach-Object { $_.Trim() }
     }
     Write-Host "Limited to $($Whitelist.Count) agents from list."
 }

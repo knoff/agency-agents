@@ -119,7 +119,8 @@ source: community
 date_added: '$Today'
 ---
 "@
-    $Header + "`r`n" + $Body | Out-File -FilePath $OutFile -Encoding utf8
+    $FullContent = $Header + "`r`n" + $Body
+    [System.IO.File]::WriteAllText($OutFile, $FullContent, (New-Object System.Text.UTF8Encoding $false))
 }
 
 function Convert-GeminiCLI {
@@ -139,7 +140,8 @@ name: $Slug
 description: $Description
 ---
 "@
-    $Header + "`r`n" + $Body | Out-File -FilePath $OutFile -Encoding utf8
+    $FullContent = $Header + "`r`n" + $Body
+    [System.IO.File]::WriteAllText($OutFile, $FullContent, (New-Object System.Text.UTF8Encoding $false))
 }
 
 function Convert-OpenCode {
@@ -162,7 +164,8 @@ mode: subagent
 color: '$Color'
 ---
 "@
-    $Header + "`r`n" + $Body | Out-File -FilePath $OutFile -Encoding utf8
+    $FullContent = $Header + "`r`n" + $Body
+    [System.IO.File]::WriteAllText($OutFile, $FullContent, (New-Object System.Text.UTF8Encoding $false))
 }
 
 function Convert-Cursor {
@@ -183,7 +186,8 @@ globs: ""
 alwaysApply: false
 ---
 "@
-    $Header + "`r`n" + $Body | Out-File -FilePath $OutFile -Encoding utf8
+    $FullContent = $Header + "`r`n" + $Body
+    [System.IO.File]::WriteAllText($OutFile, $FullContent, (New-Object System.Text.UTF8Encoding $false))
 }
 
 function Convert-OpenClaw {
@@ -214,16 +218,16 @@ function Convert-OpenClaw {
         else { $AgentsContent += $Line + "`r`n" }
     }
     
-    $SoulContent | Out-File -FilePath (Join-Path $TargetDir "SOUL.md") -Encoding utf8
-    $AgentsContent | Out-File -FilePath (Join-Path $TargetDir "AGENTS.md") -Encoding utf8
+    [System.IO.File]::WriteAllText((Join-Path $TargetDir "SOUL.md"), $SoulContent, (New-Object System.Text.UTF8Encoding $false))
+    [System.IO.File]::WriteAllText((Join-Path $TargetDir "AGENTS.md"), $AgentsContent, (New-Object System.Text.UTF8Encoding $false))
     
     $Emoji = Get-Field "emoji" $Content
     $Vibe = Get-Field "vibe" $Content
     
     if ($Emoji -and $Vibe) {
-        "# $Emoji $Name`r`n$Vibe" | Out-File -FilePath (Join-Path $TargetDir "IDENTITY.md") -Encoding utf8
+        [System.IO.File]::WriteAllText((Join-Path $TargetDir "IDENTITY.md"), "# $Emoji $Name`r`n$Vibe", (New-Object System.Text.UTF8Encoding $false))
     } else {
-        "# $Name`r`n$Description" | Out-File -FilePath (Join-Path $TargetDir "IDENTITY.md") -Encoding utf8
+        [System.IO.File]::WriteAllText((Join-Path $TargetDir "IDENTITY.md"), "# $Name`r`n$Description", (New-Object System.Text.UTF8Encoding $false))
     }
 }
 
@@ -255,7 +259,8 @@ description: $Description
 ---
 "@
     }
-    $Header + "`r`n" + $Body | Out-File -FilePath $OutFile -Encoding utf8
+    $FullContent = $Header + "`r`n" + $Body
+    [System.IO.File]::WriteAllText($OutFile, $FullContent, (New-Object System.Text.UTF8Encoding $false))
 }
 
 # --- Main ---
@@ -283,7 +288,7 @@ foreach ($T in $ToolsToRun) {
         
         $Files = Get-ChildItem -Path $Path -Filter "*.md" -File
         foreach ($F in $Files) {
-            $Content = Get-Content -Path $F.FullName -Raw
+            $Content = Get-Content -Path $F.FullName -Raw -Encoding UTF8
             if (-not $Content.StartsWith("---")) { continue }
             
             $Name = Get-Field "name" $Content
@@ -314,19 +319,19 @@ foreach ($T in $ToolsToRun) {
     if ($T -eq "gemini-cli") {
         $ManifestDir = Join-Path $OutDir "gemini-cli"
         if (-not (Test-Path $ManifestDir)) { New-Item -ItemType Directory -Path $ManifestDir -Force }
-        '{"name": "agency-agents", "version": "1.0.0"}' | Out-File -FilePath (Join-Path $ManifestDir "gemini-extension.json") -Encoding utf8
+        [System.IO.File]::WriteAllText((Join-Path $ManifestDir "gemini-extension.json"), '{"name": "agency-agents", "version": "1.0.0"}', (New-Object System.Text.UTF8Encoding $false))
     }
     
     if ($T -eq "aider") {
         $AiderDir = Join-Path $OutDir "aider"
         if (-not (Test-Path $AiderDir)) { New-Item -ItemType Directory -Path $AiderDir -Force }
-        $AiderContent | Out-File -FilePath (Join-Path $AiderDir "CONVENTIONS.md") -Encoding utf8
+        [System.IO.File]::WriteAllText((Join-Path $AiderDir "CONVENTIONS.md"), $AiderContent, (New-Object System.Text.UTF8Encoding $false))
     }
 
     if ($T -eq "windsurf") {
         $WindsurfDir = Join-Path $OutDir "windsurf"
         if (-not (Test-Path $WindsurfDir)) { New-Item -ItemType Directory -Path $WindsurfDir -Force }
-        $WindsurfContent | Out-File -FilePath (Join-Path $WindsurfDir ".windsurfrules") -Encoding utf8
+        [System.IO.File]::WriteAllText((Join-Path $WindsurfDir ".windsurfrules"), $WindsurfContent, (New-Object System.Text.UTF8Encoding $false))
     }
 
     Write-Host "  Converted $Count agents for $T"
