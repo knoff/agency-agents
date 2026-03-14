@@ -64,6 +64,42 @@ function Should-Install {
     return $false
 }
 
+function Get-AgencyRoster {
+    $ReadmePath = Join-Path $RepoRoot "README.md"
+    if (-not (Test-Path $ReadmePath)) { return "" }
+    
+    # Force UTF8 reading to avoid encoding issues in PowerShell 5.1
+    $Content = Get-Content $ReadmePath -Encoding UTF8
+    $Roster = "# Agency Roster (Installed Specialists)`n`n"
+    $Roster += "This file lists the agents currently installed in your environment. The Orchestrator uses this to delegate tasks.`n`n"
+    $Roster += "| Agent | Specialty | When to Use |`n|-------|-----------|-------------|`n"
+    
+    # Simple regex to extract rows from tables: | emoji [Name](link) | Specialty | When to Use |
+    # We look for lines starting with | and containing []()
+    $Rows = $Content | Where-Object { $_ -match "^\|\s*.*\[(.*)\]\((.*)\.md\)\s*\|\s*(.*)\s*\|\s*(.*)\s*\|" }
+    
+    $FoundCount = 0
+    foreach ($Row in $Rows) {
+        if ($Row -match "^\|\s*(.*)\[(.*)\]\((.*)\.md\)\s*\|\s*(.*)\s*\|\s*(.*)\s*\|") {
+            $Emoji = $Matches[1].Trim()
+            $Name = $Matches[2].Trim()
+            $Path = $Matches[3].Trim()
+            $Specialty = $Matches[4].Trim()
+            $WhenToUse = $Matches[5].Trim()
+            
+            # Use the filename from the path as the agent ID for matching
+            $AgentId = [System.IO.Path]::GetFileName($Path)
+            
+            if (Should-Install $AgentId) {
+                $Roster += "| $Emoji $Name | $Specialty | $WhenToUse |`n"
+                $FoundCount++
+            }
+        }
+    }
+    
+    return $Roster
+}
+
 # --- Detection ---
 
 function Test-Detected {
@@ -137,11 +173,25 @@ function Install-Antigravity {
     if (-not (Test-Path $Src)) { Write-Warning "integrations/antigravity missing."; return }
     $Dirs = Get-ChildItem -Path $Src -Directory
     $Count = 0
+    $RosterContent = ""
+    if ($Whitelist.Count -gt 0) {
+        Write-Host "Generating AGENCY_ROSTER.md..."
+        $RosterContent = Get-AgencyRoster
+    }
+
     foreach ($D in $Dirs) {
         if (Should-Install $D.Name) {
             $Target = Join-Path $Dest $D.Name
             if (-not (Test-Path $Target)) { New-Item -ItemType Directory -Path $Target -Force }
             Copy-Item (Join-Path $D.FullName "SKILL.md") $Target -Force
+            
+            # Custom logic for Orchestrator: add the roster
+            if ($D.Name -eq "agency-agents-orchestrator" -and $RosterContent) {
+                $RosterPath = Join-Path $Target "AGENCY_ROSTER.md"
+                # Safe UTF8 write without BOM or with explicit UTF8
+                [System.IO.File]::WriteAllText($RosterPath, $RosterContent, (New-Object System.Text.UTF8Encoding $false))
+                Write-Host "  + Attached AGENCY_ROSTER.md to Orchestrator"
+            }
             $Count++
         }
     }

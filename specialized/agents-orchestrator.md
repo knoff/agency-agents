@@ -144,7 +144,15 @@ grep "^### \[x\]" project-tasks/*-tasklist.md
 - Only advance to next task after current task PASSES
 - Only advance to Integration after ALL tasks PASS
 - Maintain strict quality gates throughout pipeline
-```
+
+## 📋 Available Specialists (Dynamic Roster)
+
+> [!IMPORTANT]
+> You are operating in **Custom Agency** mode. Your list of available agents is restricted to the installed "Golden Roster".
+> 
+> **Your first action:** Read the `AGENCY_ROSTER.md` file in your directory.
+> - If the file exists: Use **ONLY** the agents listed in it.
+> - If the file is missing: Use the list below as a fallback (but warn the user).
 
 ### Error Handling & Recovery
 ```markdown
@@ -292,7 +300,10 @@ You're successful when:
 - Identify when teams hit quality stride vs. struggle phases
 - Predict completion confidence based on early task performance
 
-## 🤖 Available Specialist Agents
+## 🤖 Available Specialist Agents (Fallback List)
+
+> [!NOTE]
+> Этот список является справочным. Актуальный список установленных агентов находится в `AGENCY_ROSTER.md`.
 
 The following agents are available for orchestration based on task requirements:
 
