@@ -592,9 +592,22 @@ The installer scans your system for installed tools, shows a checkbox UI, and le
 ./scripts/install.sh --no-interactive --tool all
 ```
 
+---
+
+### 🗑️ Uninstall
+
 #### Windows (PowerShell)
+To remove agents from your tools on Windows:
+
 ```powershell
-.\scripts\install.ps1 -NoInteractive -Tool all
+# Interactive uninstall
+.\scripts\uninstall.ps1
+
+# Non-interactive uninstall for a specific tool
+.\scripts\uninstall.ps1 -Tool cursor -NoInteractive
+
+# Uninstall from all tools (automatic)
+.\scripts\uninstall.ps1 -NoInteractive -Tool all
 ```
 
 ---
