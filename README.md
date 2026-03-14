@@ -592,6 +592,26 @@ The installer scans your system for installed tools, shows a checkbox UI, and le
 ./scripts/install.sh --no-interactive --tool all
 ```
 
+#### Windows (PowerShell)
+```powershell
+.\scripts\install.ps1 -NoInteractive -Tool all
+```
+
+**Selective Installation (Config):**
+
+You can limit which agents are installed by creating a configuration file in the project root. The script automatically detects `agents-to-install.txt` or `agents-to-install.json`.
+
+*   **`agents-to-install.txt`**: One agent name per line (e.g., `frontend-developer`).
+*   **`agents-to-install.json`**: A JSON array of strings (e.g., `["frontend-developer", "code-expert"]`).
+
+```powershell
+# If agents-to-install.txt exists in root, it is used automatically:
+.\scripts\install.ps1 -Tool cursor
+
+# Or specify a custom config file path:
+.\scripts\install.ps1 -Tool antigravity -ConfigPath .\my-list.txt
+```
+
 ---
 
 ### 🗑️ Uninstall
