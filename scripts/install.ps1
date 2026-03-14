@@ -9,6 +9,7 @@
 
 param (
     [string]$Tool = "all",
+    [string]$ConfigPath,
     [switch]$Interactive,
     [switch]$NoInteractive,
     [switch]$Help
@@ -30,6 +31,38 @@ if (-not (Test-Path $Integrations)) {
 }
 
 $AllTools = @("claude-code", "copilot", "antigravity", "gemini-cli", "opencode", "openclaw", "cursor", "aider", "windsurf", "qwen")
+
+# --- Config Handling ---
+
+$Whitelist = @()
+
+if ([string]::IsNullOrWhiteSpace($ConfigPath)) {
+    # Auto-detect config in root
+    $DetectJson = Join-Path $RepoRoot "agents-to-install.json"
+    $DetectTxt = Join-Path $RepoRoot "agents-to-install.txt"
+    if (Test-Path $DetectJson) { $ConfigPath = $DetectJson }
+    elseif (Test-Path $DetectTxt) { $ConfigPath = $DetectTxt }
+}
+
+if ($ConfigPath -and (Test-Path $ConfigPath)) {
+    Write-Host "Using config: $ConfigPath"
+    if ($ConfigPath.EndsWith(".json")) {
+        $Whitelist = Get-Content $ConfigPath -Raw | ConvertFrom-Json
+    } else {
+        $Whitelist = Get-Content $ConfigPath | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | ForEach-Object { $_.Trim() }
+    }
+    Write-Host "Limited to $($Whitelist.Count) agents from list."
+}
+
+function Should-Install {
+    param($AgentName)
+    if ($Whitelist.Count -eq 0) { return $true }
+    # Flexible match: partial name or full name
+    foreach ($W in $Whitelist) {
+        if ($AgentName -like "*$W*") { return $true }
+    }
+    return $false
+}
 
 # --- Detection ---
 
@@ -63,7 +96,8 @@ function Install-ClaudeCode {
         if (Test-Path $Path) {
             $Files = Get-ChildItem -Path $Path -Filter "*.md" -File
             foreach ($F in $Files) {
-                if ((Get-Content $F.FullName -TotalCount 1).StartsWith("---")) {
+                $BaseName = [System.IO.Path]::GetFileNameWithoutExtension($F.Name)
+                if ((Should-Install $BaseName) -and (Get-Content $F.FullName -TotalCount 1).StartsWith("---")) {
                     Copy-Item $F.FullName $Dest -Force
                     $Count++
                 }
@@ -85,7 +119,8 @@ function Install-Copilot {
         if (Test-Path $Path) {
             $Files = Get-ChildItem -Path $Path -Filter "*.md" -File
             foreach ($F in $Files) {
-                if ((Get-Content $F.FullName -TotalCount 1).StartsWith("---")) {
+                $BaseName = [System.IO.Path]::GetFileNameWithoutExtension($F.Name)
+                if ((Should-Install $BaseName) -and (Get-Content $F.FullName -TotalCount 1).StartsWith("---")) {
                     Copy-Item $F.FullName $DestGithub -Force
                     Copy-Item $F.FullName $DestCopilot -Force
                     $Count++
@@ -101,12 +136,16 @@ function Install-Antigravity {
     $Dest = Join-Path $env:USERPROFILE ".gemini\antigravity\skills"
     if (-not (Test-Path $Src)) { Write-Warning "integrations/antigravity missing."; return }
     $Dirs = Get-ChildItem -Path $Src -Directory
+    $Count = 0
     foreach ($D in $Dirs) {
-        $Target = Join-Path $Dest $D.Name
-        if (-not (Test-Path $Target)) { New-Item -ItemType Directory -Path $Target -Force }
-        Copy-Item (Join-Path $D.FullName "SKILL.md") $Target -Force
+        if (Should-Install $D.Name) {
+            $Target = Join-Path $Dest $D.Name
+            if (-not (Test-Path $Target)) { New-Item -ItemType Directory -Path $Target -Force }
+            Copy-Item (Join-Path $D.FullName "SKILL.md") $Target -Force
+            $Count++
+        }
     }
-    Write-Host "[OK]  Antigravity: $($Dirs.Count) skills -> $Dest"
+    Write-Host "[OK]  Antigravity: $Count skills -> $Dest"
 }
 
 function Install-GeminiCLI {
@@ -119,36 +158,57 @@ function Install-GeminiCLI {
     $SkillsDest = Join-Path $Dest "skills"
     if (-not (Test-Path $SkillsDest)) { New-Item -ItemType Directory -Path $SkillsDest -Force }
     $Dirs = Get-ChildItem -Path $SkillsSrc -Directory
+    $Count = 0
     foreach ($D in $Dirs) {
-        $Target = Join-Path $SkillsDest $D.Name
-        if (-not (Test-Path $Target)) { New-Item -ItemType Directory -Path $Target -Force }
-        Copy-Item (Join-Path $D.FullName "SKILL.md") $Target -Force
+        if (Should-Install $D.Name) {
+            $Target = Join-Path $SkillsDest $D.Name
+            if (-not (Test-Path $Target)) { New-Item -ItemType Directory -Path $Target -Force }
+            Copy-Item (Join-Path $D.FullName "SKILL.md") $Target -Force
+            $Count++
+        }
     }
-    Write-Host "[OK]  Gemini CLI: $($Dirs.Count) skills -> $Dest"
+    Write-Host "[OK]  Gemini CLI: $Count skills -> $Dest"
 }
 
 function Install-OpenCode {
     $Src = Join-Path $Integrations "opencode\agents"
     $Dest = Join-Path $PWD ".opencode\agents"
     if (-not (Test-Path $Src)) { Write-Warning "integrations/opencode missing."; return }
-    if (-not (Test-Path $Dest)) { New-Item -ItemType Directory -Path $Dest -Force }
-    Copy-Item (Join-Path $Src "*.md") $Dest -Force
-    Write-Host "[OK]  OpenCode: agents -> $Dest"
+    $Count = 0
+    $Files = Get-ChildItem -Path $Src -Filter "*.md" -File
+    foreach ($F in $Files) {
+        $BaseName = [System.IO.Path]::GetFileNameWithoutExtension($F.Name)
+        if (Should-Install $BaseName) {
+            Copy-Item $F.FullName $Dest -Force
+            $Count++
+        }
+    }
+    Write-Host "[OK]  OpenCode: $Count agents -> $Dest"
 }
 
 function Install-Cursor {
     $Src = Join-Path $Integrations "cursor\rules"
     $Dest = Join-Path $PWD ".cursor\rules"
     if (-not (Test-Path $Src)) { Write-Warning "integrations/cursor missing."; return }
-    if (-not (Test-Path $Dest)) { New-Item -ItemType Directory -Path $Dest -Force }
-    Copy-Item (Join-Path $Src "*.mdc") $Dest -Force
-    Write-Host "[OK]  Cursor: rules -> $Dest"
+    $Count = 0
+    $Files = Get-ChildItem -Path $Src -Filter "*.mdc" -File
+    foreach ($F in $Files) {
+        $BaseName = [System.IO.Path]::GetFileNameWithoutExtension($F.Name)
+        if (Should-Install $BaseName) {
+            Copy-Item $F.FullName $Dest -Force
+            $Count++
+        }
+    }
+    Write-Host "[OK]  Cursor: $Count rules -> $Dest"
 }
 
 function Install-Aider {
     $Src = Join-Path $Integrations "aider\CONVENTIONS.md"
     $Dest = Join-Path $PWD "CONVENTIONS.md"
     if (-not (Test-Path $Src)) { Write-Warning "integrations/aider missing."; return }
+    if ($Whitelist.Count -gt 0) {
+        Write-Warning "Aider uses a single CONVENTIONS.md file. Config-based filtering is not available at install time. Use convert.ps1 to filter instead."
+    }
     Copy-Item $Src $Dest -Force
     Write-Host "[OK]  Aider: CONVENTIONS.md -> $Dest"
 }
@@ -157,6 +217,9 @@ function Install-Windsurf {
     $Src = Join-Path $Integrations "windsurf\.windsurfrules"
     $Dest = Join-Path $PWD ".windsurfrules"
     if (-not (Test-Path $Src)) { Write-Warning "integrations/windsurf missing."; return }
+    if ($Whitelist.Count -gt 0) {
+        Write-Warning "Windsurf uses a single .windsurfrules file. Config-based filtering is not available at install time. Use convert.ps1 to filter instead."
+    }
     Copy-Item $Src $Dest -Force
     Write-Host "[OK]  Windsurf: .windsurfrules -> $Dest"
 }
@@ -167,21 +230,32 @@ function Install-OpenClaw {
     if (-not (Test-Path $Src)) { Write-Warning "integrations/openclaw missing."; return }
     if (-not (Test-Path $Dest)) { New-Item -ItemType Directory -Path $Dest -Force }
     $Dirs = Get-ChildItem -Path $Src -Directory
+    $Count = 0
     foreach ($D in $Dirs) {
-        $Target = Join-Path $Dest $D.Name
-        if (-not (Test-Path $Target)) { New-Item -ItemType Directory -Path $Target -Force }
-        Copy-Item (Join-Path $D.FullName "*.md") $Target -Force
+        if (Should-Install $D.Name) {
+            $Target = Join-Path $Dest $D.Name
+            if (-not (Test-Path $Target)) { New-Item -ItemType Directory -Path $Target -Force }
+            Copy-Item (Join-Path $D.FullName "*.md") $Target -Force
+            $Count++
+        }
     }
-    Write-Host "[OK]  OpenClaw: $($Dirs.Count) workspaces -> $Dest"
+    Write-Host "[OK]  OpenClaw: $Count workspaces -> $Dest"
 }
 
 function Install-Qwen {
     $Src = Join-Path $Integrations "qwen\agents"
     $Dest = Join-Path $PWD ".qwen\agents"
     if (-not (Test-Path $Src)) { Write-Warning "integrations/qwen missing."; return }
-    if (-not (Test-Path $Dest)) { New-Item -ItemType Directory -Path $Dest -Force }
-    Copy-Item (Join-Path $Src "*.md") $Dest -Force
-    Write-Host "[OK]  Qwen Code: agents -> $Dest"
+    $Count = 0
+    $Files = Get-ChildItem -Path $Src -Filter "*.md" -File
+    foreach ($F in $Files) {
+        $BaseName = [System.IO.Path]::GetFileNameWithoutExtension($F.Name)
+        if (Should-Install $BaseName) {
+            Copy-Item $F.FullName $Dest -Force
+            $Count++
+        }
+    }
+    Write-Host "[OK]  Qwen Code: $Count agents -> $Dest"
 }
 
 # --- Main Interaction ---

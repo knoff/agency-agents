@@ -76,3 +76,6 @@ integrations/windsurf/.windsurfrules
 integrations/openclaw/*
 integrations/qwen/agents/
 !integrations/openclaw/README.md
+# Selective installation config
+agents-to-install.txt
+agents-to-install.json
